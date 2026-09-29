@@ -14,54 +14,44 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: pip install googletrans==4.0.0-rc1
-
       - name: Fetch RSS, translate, and convert to JSON
         run: |
           curl -s 'https://vringe.com/export/rss/all.xml' -o feed.xml
           python3 << 'PYEOF'
-          import xml.etree.ElementTree as ET, json, sys, time
+          import xml.etree.ElementTree as ET, json, sys, time, urllib.request, urllib.parse
 
-          try:
-              from googletrans import Translator
-              translator = Translator()
-              HAS_TRANS = True
-              print('Translator loaded')
-          except Exception as e:
-              HAS_TRANS = False
-              print(f'Translator unavailable: {e}')
+          def translate(text, target_lang):
+              """Use Google Translate free API (no key needed)."""
+              if not text.strip():
+                  return ''
+              try:
+                  encoded = urllib.parse.quote(text)
+                  url = f'https://translate.googleapis.com/translate_a/single?client=gtx&sl=ru&tl={target_lang}&dt=t&q={encoded}'
+                  req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                  with urllib.request.urlopen(req, timeout=10) as resp:
+                      data = json.loads(resp.read().decode('utf-8'))
+                      return ''.join(part[0] for part in data[0] if part[0])
+              except Exception as e:
+                  print(f'  translate({target_lang}) error: {e}')
+                  return ''
 
           tree = ET.parse('feed.xml')
           items = []
 
-          for item in tree.findall('.//item'):
+          for i, item in enumerate(tree.findall('.//item')):
               enc = item.find('enclosure')
               title = (item.findtext('title') or '').strip()
 
               title_en = ''
               title_fr = ''
 
-              if title and HAS_TRANS:
-                  for attempt in range(3):
-                      try:
-                          result_en = translator.translate(title, src='ru', dest='en')
-                          title_en = result_en.text
-                          break
-                      except Exception as e:
-                          print(f'EN attempt {attempt+1} failed: {e}')
-                          time.sleep(1)
-
-                  for attempt in range(3):
-                      try:
-                          result_fr = translator.translate(title, src='ru', dest='fr')
-                          title_fr = result_fr.text
-                          break
-                      except Exception as e:
-                          print(f'FR attempt {attempt+1} failed: {e}')
-                          time.sleep(1)
-
-                  time.sleep(0.5)
+              if title:
+                  title_en = translate(title, 'en')
+                  time.sleep(0.3)
+                  title_fr = translate(title, 'fr')
+                  time.sleep(0.3)
+                  if title_en:
+                      print(f'  [{i+1}] EN: {title_en[:60]}')
 
               items.append({
                   'title': title,
