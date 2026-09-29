@@ -1,0 +1,44 @@
+name: Fetch Vringe RSS
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch RSS and convert to JSON
+        run: |
+          curl -s 'https://vringe.com/export/rss/all.xml' -o feed.xml
+          python3 << 'PYEOF'
+          import xml.etree.ElementTree as ET, json, sys
+          tree = ET.parse('feed.xml')
+          items = []
+          for item in tree.findall('.//item'):
+              enc = item.find('enclosure')
+              items.append({
+                  'title': (item.findtext('title') or '').strip(),
+                  'link': (item.findtext('link') or '').strip(),
+                  'description': (item.findtext('description') or '').strip(),
+                  'image': enc.get('url','') if enc is not None else '',
+                  'pubDate': (item.findtext('pubDate') or '').strip()
+              })
+          with open('feed.json','w',encoding='utf-8') as f:
+              json.dump({'items': items, 'fetched': __import__('datetime').datetime.utcnow().isoformat()+'Z'}, f, ensure_ascii=False)
+          print(f'{len(items)} articles saved')
+          PYEOF
+          rm feed.xml
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add feed.json
+          git diff --cached --quiet || git commit -m "Update feed.json" && git push
