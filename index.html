@@ -318,6 +318,29 @@
 
   .article-title:hover { color: var(--accent); }
 
+  .article-translations {
+    font-size: 0.78rem;
+    line-height: 1.4;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .article-tr {
+    color: var(--fg-muted);
+  }
+
+  .article-tr .lang-tag {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    width: 22px;
+    flex-shrink: 0;
+  }
+
   .article-meta {
     font-size: 0.75rem;
     color: var(--fg-muted);
@@ -653,6 +676,8 @@ async function fetchFeed() {
       else if (isBoxing) type = 'boxing';
       return {
         title: item.title || '',
+        title_en: item.title_en || '',
+        title_fr: item.title_fr || '',
         link: item.link || '',
         desc: item.description || '',
         image: item.image || '',
@@ -784,10 +809,16 @@ function renderArticles() {
     const matchHtml = isMatched
       ? `<div class="matched-kws">${a.matches.map(m => `<span class="matched-kw">${esc(m)}</span>`).join('')}</div>`
       : '';
+    const trHtml = (a.title_en || a.title_fr) ? `<div class="article-translations">${
+      a.title_fr ? `<div class="article-tr"><span class="lang-tag">FR</span> ${esc(a.title_fr)}</div>` : ''
+    }${
+      a.title_en ? `<div class="article-tr"><span class="lang-tag">EN</span> ${esc(a.title_en)}</div>` : ''
+    }</div>` : '';
     return `<div class="article-card${isMatched ? ' matched' : ''}">
       ${imgHtml}
       <div class="article-body">
         <a class="article-title" href="${esc(a.link)}" target="_blank" rel="noopener">${esc(a.title)}</a>
+        ${trHtml}
         <div class="article-meta">
           <span class="article-type ${typeClass}">${typeLabel}</span>
           <span>${date}</span>

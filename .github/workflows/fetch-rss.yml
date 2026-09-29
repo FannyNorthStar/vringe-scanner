@@ -14,25 +14,53 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch RSS and convert to JSON
+      - name: Install dependencies
+        run: pip install deep-translator
+
+      - name: Fetch RSS, translate, and convert to JSON
         run: |
           curl -s 'https://vringe.com/export/rss/all.xml' -o feed.xml
           python3 << 'PYEOF'
-          import xml.etree.ElementTree as ET, json, sys
+          import xml.etree.ElementTree as ET, json, sys, time
+          from deep_translator import GoogleTranslator
+
           tree = ET.parse('feed.xml')
           items = []
+          tr_en = GoogleTranslator(source='ru', target='en')
+          tr_fr = GoogleTranslator(source='ru', target='fr')
+
           for item in tree.findall('.//item'):
               enc = item.find('enclosure')
+              title = (item.findtext('title') or '').strip()
+
+              # Translate title to EN and FR
+              title_en = ''
+              title_fr = ''
+              if title:
+                  try:
+                      title_en = tr_en.translate(title)
+                      time.sleep(0.3)
+                  except Exception as e:
+                      print(f'EN translation error: {e}')
+                  try:
+                      title_fr = tr_fr.translate(title)
+                      time.sleep(0.3)
+                  except Exception as e:
+                      print(f'FR translation error: {e}')
+
               items.append({
-                  'title': (item.findtext('title') or '').strip(),
+                  'title': title,
+                  'title_en': title_en,
+                  'title_fr': title_fr,
                   'link': (item.findtext('link') or '').strip(),
                   'description': (item.findtext('description') or '').strip(),
                   'image': enc.get('url','') if enc is not None else '',
                   'pubDate': (item.findtext('pubDate') or '').strip()
               })
+
           with open('feed.json','w',encoding='utf-8') as f:
               json.dump({'items': items, 'fetched': __import__('datetime').datetime.utcnow().isoformat()+'Z'}, f, ensure_ascii=False)
-          print(f'{len(items)} articles saved')
+          print(f'{len(items)} articles saved with translations')
           PYEOF
           rm feed.xml
 
