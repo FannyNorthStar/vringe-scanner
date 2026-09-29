@@ -15,38 +15,53 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: pip install deep-translator
+        run: pip install googletrans==4.0.0-rc1
 
       - name: Fetch RSS, translate, and convert to JSON
         run: |
           curl -s 'https://vringe.com/export/rss/all.xml' -o feed.xml
           python3 << 'PYEOF'
           import xml.etree.ElementTree as ET, json, sys, time
-          from deep_translator import GoogleTranslator
+
+          try:
+              from googletrans import Translator
+              translator = Translator()
+              HAS_TRANS = True
+              print('Translator loaded')
+          except Exception as e:
+              HAS_TRANS = False
+              print(f'Translator unavailable: {e}')
 
           tree = ET.parse('feed.xml')
           items = []
-          tr_en = GoogleTranslator(source='ru', target='en')
-          tr_fr = GoogleTranslator(source='ru', target='fr')
 
           for item in tree.findall('.//item'):
               enc = item.find('enclosure')
               title = (item.findtext('title') or '').strip()
 
-              # Translate title to EN and FR
               title_en = ''
               title_fr = ''
-              if title:
-                  try:
-                      title_en = tr_en.translate(title)
-                      time.sleep(0.3)
-                  except Exception as e:
-                      print(f'EN translation error: {e}')
-                  try:
-                      title_fr = tr_fr.translate(title)
-                      time.sleep(0.3)
-                  except Exception as e:
-                      print(f'FR translation error: {e}')
+
+              if title and HAS_TRANS:
+                  for attempt in range(3):
+                      try:
+                          result_en = translator.translate(title, src='ru', dest='en')
+                          title_en = result_en.text
+                          break
+                      except Exception as e:
+                          print(f'EN attempt {attempt+1} failed: {e}')
+                          time.sleep(1)
+
+                  for attempt in range(3):
+                      try:
+                          result_fr = translator.translate(title, src='ru', dest='fr')
+                          title_fr = result_fr.text
+                          break
+                      except Exception as e:
+                          print(f'FR attempt {attempt+1} failed: {e}')
+                          time.sleep(1)
+
+                  time.sleep(0.5)
 
               items.append({
                   'title': title,
@@ -60,9 +75,9 @@ jobs:
 
           with open('feed.json','w',encoding='utf-8') as f:
               json.dump({'items': items, 'fetched': __import__('datetime').datetime.utcnow().isoformat()+'Z'}, f, ensure_ascii=False)
-          print(f'{len(items)} articles saved with translations')
+          print(f'{len(items)} articles saved')
           PYEOF
-          rm feed.xml
+          rm -f feed.xml
 
       - name: Commit if changed
         run: |
