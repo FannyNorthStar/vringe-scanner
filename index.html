@@ -400,7 +400,7 @@
 
 <div class="header">
   <h1>Vringe Scanner</h1>
-  <p>RSS monitor for UmDoisEsportes translation team</p>
+  <p>RSS monitor for UmDoisEsportes · Tracking 28 fighters across Cyrillic + Latin spellings</p>
 </div>
 
 <div class="status-bar" id="statusBar">
@@ -409,7 +409,7 @@
 </div>
 
 <details class="keywords-section" id="kwSection">
-  <summary>Keywords <span class="kw-count" id="kwCount">(0)</span></summary>
+  <summary>Extra Keywords <span class="kw-count" id="kwCount">(0)</span></summary>
   <div class="keywords-body">
     <div class="kw-input-row">
       <input type="text" id="kwInput" placeholder="Add keyword (press Enter)">
@@ -417,7 +417,7 @@
     </div>
     <div class="kw-tags" id="kwTags"></div>
     <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
-      <button class="btn btn-secondary" onclick="loadPreset()">Load sample keywords</button>
+      <button class="btn btn-secondary" onclick="loadPreset()">Add general MMA terms</button>
       <button class="btn btn-secondary" onclick="clearKeywords()">Clear all</button>
     </div>
   </div>
@@ -435,7 +435,7 @@
 </div>
 
 <div class="footer">
-  Auto-refreshes every 30 minutes. Keywords saved in your browser.
+  28 fighters tracked automatically. Extra keywords saved in your browser. Auto-refreshes every 30 min.
 </div>
 
 <script>
@@ -446,6 +446,128 @@ const REFRESH_MS = 30 * 60 * 1000;
 let articles = [];
 let keywords = [];
 let currentFilter = 'all';
+
+// Fighter keyword database: each fighter gets Cyrillic forms (title matching),
+// Latin transliterated forms (URL slug matching), and nicknames.
+// Russian declined forms included (genitive -ы/-а, accusative -у, instrumental -ой/-ем, etc.)
+const FIGHTER_KEYWORDS = {
+  'Alex Pereira': [
+    'Перейра','Перейры','Перейру','Перейрой','Поатан','Поатана',
+    'pereyra','pereira','poatan'
+  ],
+  'Alexandre Pantoja': [
+    'Пантожа','Пантожи','Пантожу','Пантожей',
+    'pantozha','pantoja'
+  ],
+  'Diego Lopes': [
+    'Лопес','Лопеса','Лопесу','Лопесом','Диего Лопес',
+    'lopes','diego-lopes','lopesa'
+  ],
+  'Jean Silva': [
+    'Жеан Силва','Жеан','Силва','Силвы','Силву','Силвой',
+    'zhean-silva','zhean','silva','jean-silva'
+  ],
+  'Charles Oliveira': [
+    'Оливейра','Оливейры','Оливейру','Оливейрой','Ду Бронкс','ду Бронкс',
+    'oliveyra','oliveira','du-bronks','do-bronx','du-bronksa'
+  ],
+  'Renato Moicano': [
+    'Моикано','Моикану','Моикана',
+    'moikano','moicano'
+  ],
+  'Mauricio Ruffy': [
+    'Раффи','Руффи',
+    'raffi','ruffy','ruffi'
+  ],
+  'Carlos Prates': [
+    'Пратес','Пратеса','Пратесу','Пратесом',
+    'prates','pratesa'
+  ],
+  'Caio Borralho': [
+    'Борральо','Борральу',
+    'borralo','borralho','borralu'
+  ],
+  'Paulo Costa': [
+    'Коста','Косты','Косту','Костой','Борращинья','Борrachинья',
+    'kosta','costa','borrachinha','borraschinya'
+  ],
+  'Johnny Walker': [
+    'Уокер','Уокера','Уокеру','Уокером','Джонни Уокер',
+    'uoker','walker','dzhonni-uoker','johnny-walker'
+  ],
+  'Vitor Petrino': [
+    'Петрино','Петрину',
+    'petrino'
+  ],
+  'Mackenzie Dern': [
+    'Дерн','Дерна','Дерном','Макензи',
+    'dern','makkenzi','mackenzie'
+  ],
+  'Amanda Ribas': [
+    'Рибас','Рибасом',
+    'ribas'
+  ],
+  'Jessica Andrade': [
+    'Андраде','Андради',
+    'andrade','andradi'
+  ],
+  'Conor McGregor': [
+    'Макгрегор','Макгрегора','Макгрегору','Макгрегором','МакГрегор',
+    'makgregor','mcgregor','makgregora'
+  ],
+  'Amanda Nunes': [
+    'Нуньес','Нуньеса','Нуньесом',
+    'nunes','nunyes','nunyesa'
+  ],
+  'Deiveson Figueiredo': [
+    'Фигередо','Фигереду',
+    'figueredo','figueiredo','figuredo'
+  ],
+  'Brunno Hulk': [
+    'Халк','Халка','Халку',
+    'khalk','hulk','brunno'
+  ],
+  'Arman Tsarukyan': [
+    'Царукян','Царукяна','Царукяну','Царукяном',
+    'tsarukyan','tsarukyana'
+  ],
+  'Tom Aspinall': [
+    'Аспиналл','Аспиналла','Аспиналлу','Аспиналлом',
+    'aspinall','aspinalla'
+  ],
+  'Lerryan Douglas': [
+    'Дуглас','Дугласа','Дугласом',
+    'duglas','douglas','duglasa'
+  ],
+  'Valter Walker': [
+    'Вальтер Уокер','Вальтер','Валтер',
+    'valter','valter-uoker'
+  ],
+  'Josh Hokit': [
+    'Хокит','Хокита','Хокиту',
+    'khokit','hokit','khokita'
+  ],
+  'Cris Cyborg': [
+    'Сайборг','Киборг','Крис Сайборг',
+    'sayborg','kiborg','cyborg','kris-sayborg'
+  ],
+  'Natalia Silva': [
+    'Наталия Силва','Наталия','Наталья Силва',
+    'nataliya','natalia-silva','natalya'
+  ],
+  'Ian Machado Garry': [
+    'Гарри','Мачадо','Иан Мачадо',
+    'garri','machado','ian-machado','garry'
+  ],
+  'Islam Makhachev': [
+    'Махачев','Махачева','Махачеву','Махачевом','Ислам',
+    'makhachev','makhacheva','islam'
+  ],
+  'Ilia Topuria': [
+    'Топурия','Топурии','Топурию','Топурией','Илия',
+    'topuria','topuriya','topurii'
+  ]
+};
 let refreshTimer = null;
 let nextRefreshTime = null;
 
@@ -505,7 +627,7 @@ function clearKeywords() {
 }
 
 function loadPreset() {
-  const presets = ['UFC', 'Bellator', 'PFL', 'бой', 'нокаут', 'поединок', 'чемпион', 'титул', 'боксёр', 'ринг', 'раунд', 'весовая категория', 'Хабиб', 'Махачев', 'Оливейра', 'Перейра'];
+  const presets = ['UFC', 'Bellator', 'PFL', 'бой', 'нокаут', 'поединок', 'чемпион', 'титул'];
   const newOnes = presets.filter(p => !keywords.some(k => k.toLowerCase() === p.toLowerCase()));
   keywords.push(...newOnes);
   saveKeywords();
@@ -581,10 +703,32 @@ function updateCountdown() {
 }
 
 // --- Matching ---
+// Checks title + description + URL against both user keywords AND the fighter database
 function matchArticle(article) {
-  if (!keywords.length) return [];
-  const haystack = (article.title + ' ' + article.desc).toLowerCase();
-  return keywords.filter(kw => haystack.includes(kw.toLowerCase()));
+  const titleDesc = (article.title + ' ' + article.desc).toLowerCase();
+  const url = (article.link || '').toLowerCase();
+  const found = [];
+
+  // Check fighter database (always active)
+  for (const [fighter, variants] of Object.entries(FIGHTER_KEYWORDS)) {
+    for (const v of variants) {
+      const vl = v.toLowerCase();
+      if (titleDesc.includes(vl) || url.includes(vl)) {
+        found.push(fighter);
+        break;
+      }
+    }
+  }
+
+  // Check user-added keywords
+  for (const kw of keywords) {
+    const kwl = kw.toLowerCase();
+    if ((titleDesc.includes(kwl) || url.includes(kwl)) && !found.includes(kw)) {
+      found.push(kw);
+    }
+  }
+
+  return found;
 }
 
 // --- Render ---
