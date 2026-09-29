@@ -439,12 +439,7 @@
 </div>
 
 <script>
-const FEED_URL = 'https://vringe.com/export/rss/all.xml';
-const PROXIES = [
-  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
-];
+const FEED_JSON = 'feed.json';
 const REFRESH_MS = 30 * 60 * 1000;
 
 let articles = [];
@@ -645,44 +640,45 @@ document.getElementById('kwInput').addEventListener('keydown', e => {
 
 // --- Feed fetch ---
 async function fetchFeed() {
-  setStatus('loading', 'Fetching feed...');
-  let lastErr = '';
-  for (let i = 0; i < PROXIES.length; i++) {
-    try {
-      setStatus('loading', `Trying proxy ${i + 1}/${PROXIES.length}...`);
-      const proxyUrl = PROXIES[i](FEED_URL);
-      const resp = await fetch(proxyUrl);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const text = await resp.text();
-      const parser = new DOMParser();
-      const xml = parser.parseFromString(text, 'text/xml');
-      const parseErr = xml.querySelector('parsererror');
-      if (parseErr) throw new Error('XML parse error');
-      const items = xml.querySelectorAll('item');
-      articles = Array.from(items).map(item => {
-        const title = item.querySelector('title')?.textContent || '';
-        const link = item.querySelector('link')?.textContent || '';
-        const desc = item.querySelector('description')?.textContent || '';
-        const enclosure = item.querySelector('enclosure');
-        const image = enclosure ? enclosure.getAttribute('url') : '';
-        const pubDate = item.querySelector('pubDate')?.textContent || '';
-        const isMma = /\/mma\//i.test(link);
-        const isBoxing = /\/box|\/boxing|бокс/i.test(link) || /бокс/i.test(title);
-        let type = 'other';
-        if (isMma) type = 'mma';
-        else if (isBoxing) type = 'boxing';
-        return { title, link, desc, image, pubDate, type };
-      });
-      setStatus('ok', `${articles.length} articles loaded`);
-      renderArticles();
-      scheduleRefresh();
-      return;
-    } catch (err) {
-      lastErr = err.message;
-    }
+  setStatus('loading', 'Loading feed...');
+  try {
+    const resp = await fetch(FEED_JSON + '?t=' + Date.now());
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    articles = (data.items || []).map(item => {
+      const isMma = /\/mma\//i.test(item.link);
+      const isBoxing = /\/box|\/boxing|бокс/i.test(item.link) || /бокс/i.test(item.title);
+      let type = 'other';
+      if (isMma) type = 'mma';
+      else if (isBoxing) type = 'boxing';
+      return {
+        title: item.title || '',
+        link: item.link || '',
+        desc: item.description || '',
+        image: item.image || '',
+        pubDate: item.pubDate || '',
+        type
+      };
+    });
+    const fetched = data.fetched ? new Date(data.fetched) : null;
+    const ago = fetched ? timeSince(fetched) : '';
+    setStatus('ok', `${articles.length} articles` + (ago ? ` · feed updated ${ago}` : ''));
+    renderArticles();
+    scheduleRefresh();
+  } catch (err) {
+    setStatus('error', `Error loading feed.json: ${err.message}`);
+    scheduleRefresh();
   }
-  setStatus('error', `All proxies failed: ${lastErr}`);
-  scheduleRefresh();
+}
+
+function timeSince(date) {
+  const diff = Date.now() - date.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  return Math.floor(hrs / 24) + 'd ago';
 }
 
 // --- Status ---
