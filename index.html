@@ -1,0 +1,686 @@
+<title>Vringe Scanner</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg: #f8f7f5;
+    --surface: #ffffff;
+    --surface-alt: #f0efed;
+    --fg: #1a1a1a;
+    --fg-muted: #6b6b6b;
+    --accent: #c0392b;
+    --accent-light: #fdeaea;
+    --accent-dark: #922b21;
+    --border: #e0dfdc;
+    --tag-bg: #fff3cd;
+    --tag-fg: #856404;
+    --match-bg: #c0392b;
+    --match-fg: #ffffff;
+    --green: #27ae60;
+    --green-light: #eafaf1;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141312;
+      --surface: #1e1d1b;
+      --surface-alt: #262524;
+      --fg: #e8e6e3;
+      --fg-muted: #908d88;
+      --accent: #e74c3c;
+      --accent-light: #2a1615;
+      --accent-dark: #f1948a;
+      --border: #333230;
+      --tag-bg: #3d3215;
+      --tag-fg: #f0c040;
+      --match-bg: #e74c3c;
+      --match-fg: #ffffff;
+      --green: #2ecc71;
+      --green-light: #1a2e1f;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141312;
+    --surface: #1e1d1b;
+    --surface-alt: #262524;
+    --fg: #e8e6e3;
+    --fg-muted: #908d88;
+    --accent: #e74c3c;
+    --accent-light: #2a1615;
+    --accent-dark: #f1948a;
+    --border: #333230;
+    --tag-bg: #3d3215;
+    --tag-fg: #f0c040;
+    --match-bg: #e74c3c;
+    --match-fg: #ffffff;
+    --green: #2ecc71;
+    --green-light: #1a2e1f;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.3);
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    padding-inline: 16px;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .header {
+    padding: 24px 0 16px;
+    border-bottom: 2px solid var(--accent);
+    margin-bottom: 20px;
+  }
+
+  .header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 4px;
+    color: var(--accent);
+    letter-spacing: -0.02em;
+  }
+
+  .header p {
+    font-size: 0.85rem;
+    color: var(--fg-muted);
+    margin: 0;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+    background: var(--green);
+    flex-shrink: 0;
+  }
+
+  .status-dot.error { background: var(--accent); }
+  .status-dot.loading { background: var(--tag-fg); animation: pulse 1s infinite; }
+
+  @keyframes pulse { 50% { opacity: 0.4; } }
+
+  .keywords-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 20px;
+  }
+
+  .keywords-section summary {
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .keywords-section summary::-webkit-details-marker { display: none; }
+
+  .keywords-section summary::before {
+    content: '▸';
+    font-size: 0.75rem;
+    transition: transform 0.15s;
+  }
+
+  .keywords-section[open] summary::before { transform: rotate(90deg); }
+
+  .kw-count {
+    font-weight: 400;
+    color: var(--fg-muted);
+    font-size: 0.78rem;
+  }
+
+  .keywords-body { margin-top: 12px; }
+
+  .kw-input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .kw-input-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--fg);
+    font-size: 0.85rem;
+    font-family: inherit;
+  }
+
+  .kw-input-row input::placeholder { color: var(--fg-muted); }
+  .kw-input-row input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+  .btn {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+  }
+
+  .btn:hover { opacity: 0.85; }
+
+  .btn-accent {
+    background: var(--accent);
+    color: var(--match-fg);
+  }
+
+  .btn-secondary {
+    background: var(--surface-alt);
+    color: var(--fg);
+    border: 1px solid var(--border);
+  }
+
+  .kw-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .kw-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: var(--tag-bg);
+    color: var(--tag-fg);
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 500;
+  }
+
+  .kw-tag button {
+    background: none;
+    border: none;
+    color: var(--tag-fg);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0;
+    opacity: 0.6;
+  }
+
+  .kw-tag button:hover { opacity: 1; }
+
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--surface);
+    color: var(--fg-muted);
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+
+  .filter-btn.active {
+    background: var(--accent);
+    color: var(--match-fg);
+    border-color: var(--accent);
+  }
+
+  .match-count {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .articles { display: grid; gap: 12px; }
+
+  .article-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition: border-color 0.15s;
+    display: flex;
+    gap: 0;
+  }
+
+  .article-card:hover { border-color: var(--fg-muted); }
+
+  .article-card.matched {
+    border-left: 4px solid var(--accent);
+  }
+
+  .article-thumb {
+    width: 100px;
+    min-height: 80px;
+    flex-shrink: 0;
+    object-fit: cover;
+    background: var(--surface-alt);
+  }
+
+  .article-body {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .article-title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--fg);
+    text-decoration: none;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .article-title:hover { color: var(--accent); }
+
+  .article-meta {
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .article-type {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .type-mma { background: var(--accent-light); color: var(--accent); }
+  .type-boxing { background: var(--tag-bg); color: var(--tag-fg); }
+  .type-other { background: var(--surface-alt); color: var(--fg-muted); }
+
+  .matched-kws {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .matched-kw {
+    padding: 2px 7px;
+    background: var(--match-bg);
+    color: var(--match-fg);
+    border-radius: 4px;
+    font-size: 0.68rem;
+    font-weight: 600;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--fg-muted);
+    font-size: 0.9rem;
+  }
+
+  .empty-state .emoji { font-size: 2rem; margin-bottom: 12px; }
+
+  .loading-spinner {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--fg-muted);
+  }
+
+  .loading-spinner::after {
+    content: '';
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .footer {
+    margin-top: 32px;
+    padding: 16px 0;
+    border-top: 1px solid var(--border);
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+    text-align: center;
+  }
+
+  @media (max-width: 480px) {
+    .article-thumb { width: 72px; }
+    .article-title { font-size: 0.82rem; }
+  }
+</style>
+
+<div class="header">
+  <h1>Vringe Scanner</h1>
+  <p>RSS monitor for UmDoisEsportes translation team</p>
+</div>
+
+<div class="status-bar" id="statusBar">
+  <span><span class="status-dot loading" id="statusDot"></span><span id="statusText">Loading feed...</span></span>
+  <span id="nextRefresh"></span>
+</div>
+
+<details class="keywords-section" id="kwSection">
+  <summary>Keywords <span class="kw-count" id="kwCount">(0)</span></summary>
+  <div class="keywords-body">
+    <div class="kw-input-row">
+      <input type="text" id="kwInput" placeholder="Add keyword (press Enter)">
+      <button class="btn btn-accent" onclick="addKeyword()">Add</button>
+    </div>
+    <div class="kw-tags" id="kwTags"></div>
+    <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+      <button class="btn btn-secondary" onclick="loadPreset()">Load sample keywords</button>
+      <button class="btn btn-secondary" onclick="clearKeywords()">Clear all</button>
+    </div>
+  </div>
+</details>
+
+<div class="filter-row">
+  <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">All <span class="match-count" id="countAll">0</span></button>
+  <button class="filter-btn" data-filter="matched" onclick="setFilter('matched')">Matched <span class="match-count" id="countMatched">0</span></button>
+  <button class="filter-btn" data-filter="mma" onclick="setFilter('mma')">MMA <span class="match-count" id="countMma">0</span></button>
+  <button class="filter-btn" data-filter="boxing" onclick="setFilter('boxing')">Boxing <span class="match-count" id="countBoxing">0</span></button>
+</div>
+
+<div id="articlesContainer" class="articles">
+  <div class="loading-spinner"></div>
+</div>
+
+<div class="footer">
+  Auto-refreshes every 30 minutes. Keywords saved in your browser.
+</div>
+
+<script>
+const FEED_URL = 'https://vringe.com/export/rss/all.xml';
+const PROXY_URL = 'https://api.allorigins.win/raw?url=';
+const REFRESH_MS = 30 * 60 * 1000;
+
+let articles = [];
+let keywords = [];
+let currentFilter = 'all';
+let refreshTimer = null;
+let nextRefreshTime = null;
+
+// --- localStorage helpers ---
+function loadKeywords() {
+  try {
+    const saved = localStorage.getItem('vringe_keywords');
+    if (saved) keywords = JSON.parse(saved);
+  } catch(e) {}
+}
+
+function saveKeywords() {
+  try {
+    localStorage.setItem('vringe_keywords', JSON.stringify(keywords));
+  } catch(e) {}
+}
+
+// --- Keywords UI ---
+function renderKeywords() {
+  const container = document.getElementById('kwTags');
+  document.getElementById('kwCount').textContent = `(${keywords.length})`;
+  if (!keywords.length) {
+    container.innerHTML = '<span style="font-size:0.78rem;color:var(--fg-muted)">No keywords yet. Add some to flag matching articles.</span>';
+    return;
+  }
+  container.innerHTML = keywords.map((kw, i) =>
+    `<span class="kw-tag">${esc(kw)}<button onclick="removeKeyword(${i})" title="Remove">&times;</button></span>`
+  ).join('');
+}
+
+function addKeyword() {
+  const input = document.getElementById('kwInput');
+  const val = input.value.trim();
+  if (!val) return;
+  // Support comma-separated
+  const newKws = val.split(',').map(k => k.trim()).filter(k => k && !keywords.some(e => e.toLowerCase() === k.toLowerCase()));
+  keywords.push(...newKws);
+  saveKeywords();
+  renderKeywords();
+  renderArticles();
+  input.value = '';
+  input.focus();
+}
+
+function removeKeyword(idx) {
+  keywords.splice(idx, 1);
+  saveKeywords();
+  renderKeywords();
+  renderArticles();
+}
+
+function clearKeywords() {
+  keywords = [];
+  saveKeywords();
+  renderKeywords();
+  renderArticles();
+}
+
+function loadPreset() {
+  const presets = ['UFC', 'Bellator', 'PFL', 'бой', 'нокаут', 'поединок', 'чемпион', 'титул', 'боксёр', 'ринг', 'раунд', 'весовая категория', 'Хабиб', 'Махачев', 'Оливейра', 'Перейра'];
+  const newOnes = presets.filter(p => !keywords.some(k => k.toLowerCase() === p.toLowerCase()));
+  keywords.push(...newOnes);
+  saveKeywords();
+  renderKeywords();
+  renderArticles();
+}
+
+document.getElementById('kwInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); addKeyword(); }
+});
+
+// --- Feed fetch ---
+async function fetchFeed() {
+  setStatus('loading', 'Fetching feed...');
+  try {
+    const resp = await fetch(PROXY_URL + encodeURIComponent(FEED_URL));
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const text = await resp.text();
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(text, 'text/xml');
+    const parseErr = xml.querySelector('parsererror');
+    if (parseErr) throw new Error('XML parse error');
+    const items = xml.querySelectorAll('item');
+    articles = Array.from(items).map(item => {
+      const title = item.querySelector('title')?.textContent || '';
+      const link = item.querySelector('link')?.textContent || '';
+      const desc = item.querySelector('description')?.textContent || '';
+      const enclosure = item.querySelector('enclosure');
+      const image = enclosure ? enclosure.getAttribute('url') : '';
+      const pubDate = item.querySelector('pubDate')?.textContent || '';
+      const isMma = /\/mma\//i.test(link);
+      const isBoxing = /\/box|\/boxing|бокс/i.test(link) || /бокс/i.test(title);
+      let type = 'other';
+      if (isMma) type = 'mma';
+      else if (isBoxing) type = 'boxing';
+      return { title, link, desc, image, pubDate, type };
+    });
+    setStatus('ok', `${articles.length} articles loaded`);
+    renderArticles();
+    scheduleRefresh();
+  } catch (err) {
+    setStatus('error', `Error: ${err.message}`);
+    scheduleRefresh();
+  }
+}
+
+// --- Status ---
+function setStatus(state, text) {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  dot.className = 'status-dot' + (state === 'error' ? ' error' : state === 'loading' ? ' loading' : '');
+  txt.textContent = text;
+}
+
+function scheduleRefresh() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  nextRefreshTime = Date.now() + REFRESH_MS;
+  updateCountdown();
+  refreshTimer = setInterval(() => {
+    if (Date.now() >= nextRefreshTime) {
+      fetchFeed();
+    } else {
+      updateCountdown();
+    }
+  }, 10000);
+}
+
+function updateCountdown() {
+  const el = document.getElementById('nextRefresh');
+  if (!nextRefreshTime) { el.textContent = ''; return; }
+  const mins = Math.max(0, Math.ceil((nextRefreshTime - Date.now()) / 60000));
+  el.textContent = mins > 0 ? `Next refresh in ${mins}m` : 'Refreshing...';
+}
+
+// --- Matching ---
+function matchArticle(article) {
+  if (!keywords.length) return [];
+  const haystack = (article.title + ' ' + article.desc).toLowerCase();
+  return keywords.filter(kw => haystack.includes(kw.toLowerCase()));
+}
+
+// --- Render ---
+function renderArticles() {
+  const container = document.getElementById('articlesContainer');
+  if (!articles.length) {
+    container.innerHTML = '<div class="empty-state"><div class="emoji">📡</div>No articles loaded yet.</div>';
+    updateCounts();
+    return;
+  }
+
+  const enriched = articles.map(a => ({ ...a, matches: matchArticle(a) }));
+
+  // Counts
+  const all = enriched.length;
+  const matched = enriched.filter(a => a.matches.length > 0).length;
+  const mma = enriched.filter(a => a.type === 'mma').length;
+  const boxing = enriched.filter(a => a.type === 'boxing').length;
+
+  document.getElementById('countAll').textContent = all;
+  document.getElementById('countMatched').textContent = matched;
+  document.getElementById('countMma').textContent = mma;
+  document.getElementById('countBoxing').textContent = boxing;
+
+  let filtered = enriched;
+  if (currentFilter === 'matched') filtered = enriched.filter(a => a.matches.length > 0);
+  else if (currentFilter === 'mma') filtered = enriched.filter(a => a.type === 'mma');
+  else if (currentFilter === 'boxing') filtered = enriched.filter(a => a.type === 'boxing');
+
+  // Sort: matched first
+  filtered.sort((a, b) => b.matches.length - a.matches.length);
+
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty-state"><div class="emoji">🔍</div>No articles match this filter.</div>';
+    return;
+  }
+
+  container.innerHTML = filtered.map(a => {
+    const isMatched = a.matches.length > 0;
+    const typeLabel = a.type === 'mma' ? 'MMA' : a.type === 'boxing' ? 'Boxing' : 'Other';
+    const typeClass = `type-${a.type}`;
+    const date = a.pubDate ? formatDate(a.pubDate) : '';
+    const imgHtml = a.image
+      ? `<img class="article-thumb" src="${esc(a.image)}" alt="" loading="lazy" onerror="this.hidden=true">`
+      : '';
+    const matchHtml = isMatched
+      ? `<div class="matched-kws">${a.matches.map(m => `<span class="matched-kw">${esc(m)}</span>`).join('')}</div>`
+      : '';
+    return `<div class="article-card${isMatched ? ' matched' : ''}">
+      ${imgHtml}
+      <div class="article-body">
+        <a class="article-title" href="${esc(a.link)}" target="_blank" rel="noopener">${esc(a.title)}</a>
+        <div class="article-meta">
+          <span class="article-type ${typeClass}">${typeLabel}</span>
+          <span>${date}</span>
+        </div>
+        ${matchHtml}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateCounts() {
+  document.getElementById('countAll').textContent = '0';
+  document.getElementById('countMatched').textContent = '0';
+  document.getElementById('countMma').textContent = '0';
+  document.getElementById('countBoxing').textContent = '0';
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === f);
+  });
+  renderArticles();
+}
+
+function formatDate(str) {
+  try {
+    const d = new Date(str);
+    const now = new Date();
+    const diff = now - d;
+    if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+    if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  } catch(e) { return str; }
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// --- Init ---
+loadKeywords();
+renderKeywords();
+fetchFeed();
+</script>
